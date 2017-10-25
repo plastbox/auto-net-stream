@@ -21,5 +21,10 @@
   "bugs": {
     "url": "https://github.com/plastbox/auto-net-stream/issues"
   },
-  "homepage": "https://github.com/plastbox/auto-net-stream#readme"
+  "homepage": "https://github.com/plastbox/auto-net-stream#readme",
+  "dependencies": {
+    "gstream-consumer": "0.0.6",
+    "node-machine-id": "^1.1.9",
+    "node-ssdp": "github:plastbox/node-ssdp"
+  }
 }

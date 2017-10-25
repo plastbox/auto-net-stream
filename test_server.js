@@ -1,11 +1,13 @@
 /* jshint node:true */
 'use strict';
 
-for(var i = 0; i < 5; i++) {
+for(var i = 0; i < 3; i++) {
+
 	require('./server.js')({servicename: 'timesource'}, function(socket, request) {
 		var ts = new MeasurementStream(request);
 		ts.pipe(socket);
 	});
+
 }
 
 const { Readable } = require('stream');

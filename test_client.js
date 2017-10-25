@@ -21,9 +21,11 @@ class MyWritable extends Writable {
 }
 
 for(var i=0; i<20; i++) {
+	
 	require('./client.js')({servicename:'isotimesource'}, function(client) {
 		client.pipe(new MyWritable());
 	});
+
 }
 setInterval(() => {
 	slowMode = !slowMode;

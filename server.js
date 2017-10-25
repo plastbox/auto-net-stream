@@ -4,7 +4,7 @@
 const ssdp = require('node-ssdp').Server;
 const http = require('http');
 const url = require('url');
-const { Readable, Writable } = require('stream');
+const machineIdSync = require('node-machine-id').machineIdSync;
 
 module.exports = function(options, callback) {
 	if(!options.servicename) {
@@ -17,16 +17,17 @@ module.exports = function(options, callback) {
 	};
 	var openRequests = [];
 	var server = http.createServer(function(req, res) {
-		console.log('Request', req.method, req.url);
+		var urlParsed = url.parse(req.url, true);
+		console.log('Request', req.method, urlParsed.pathname, urlParsed.query);
 		res.servicename = options.servicename;
-		if(req.method === 'GET' && req.url === '/stats') {
+		if(req.method === 'GET' && urlParsed.pathname === '/stats') {
 			res.setHeader('Content-Type', 'text/html');
 			res.writeHead(200, { 'Content-Type': 'text/plain' });
 			res.end('Ongoing streams: ' + openRequests.length);
 		}
 		else {
-			if(req.method === 'GET' && req.url === '/') {
-				callback.call(this, res, url.parse(req.url, true).query);
+			if(req.method === 'GET' && urlParsed.pathname === '/') {
+				callback.call(this, res, urlParsed.query);
 				openRequests.push(this);
 			}
 			res.on('error', (e) => {
@@ -48,7 +49,8 @@ module.exports = function(options, callback) {
 			address: my.address,
 			port: my.port,
 			servicename: options.servicename
-		}
+		},
+		udn: 'uuid:' + machineIdSync()
 	});
 
 	//ssdpServer.addUSN('upnp:rootdevice');

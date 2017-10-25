@@ -2,7 +2,6 @@
 'use strict';
 
 const { Transform } = require('stream');
-
 class MyTransform extends Transform {
 	constructor(options) {
 		super(options);
@@ -30,6 +29,7 @@ class MyTransform extends Transform {
 }
 
 for(var i = 0; i < 10; i++) {
+
 	require('./server.js')({servicename: 'isotimesource'}, function(socket, request) {
 		// Server has been created and a received has been request
 		require('./client.js')({servicename: 'timesource'}, function(client) {
@@ -41,4 +41,5 @@ for(var i = 0; i < 10; i++) {
 			});
 		});
 	});
+
 }

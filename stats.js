@@ -13,64 +13,68 @@ var ssdpClient = new ssdp({
 	console.log('stop ssdpcli');
 });*/
 
-var searches = {};
-ssdpClient.findServices = function(name, callback) {
-	if(!searches[name]) {
-		searches[name] = {
-			callback: callback,
-			result: {},
-			tmrResolve: null
-		};
+var searches = [];
+ssdpClient.findServices = function(searchString, callback) {
+	var search = {
+		searchString: searchString,
+		matcher: new RegExp('\^' + searchString.replace(/\*/g, '\[\\w\\d\\-\]\*') + '\$','i'),
+		callback: callback,
+		result: []/*{}*/,
+		tmrResolve: setTimeout(()=>{
+			console.log('Resolve search (empty)');
+			searches.splice(searches.indexOf(search), 1)
+		}, 500)
 	}
-	this.search(name);
-	searches[name].tmrResolve = setTimeout(()=>{
-		console.log('Resolve search');
-	}, 1000);
+	searches.push(search);
+	this.search(searchString);
 };
 ssdpClient.on('response', function inResponse(headers, code, rinfo) {
-	//console.log('Got a response to an m-search:\n', code, headers, rinfo);
-	Object.keys(searches).forEach((key) => {
-		if(headers.USN.match(new RegExp(key.replace(/\*/g, '.*'), "g")) !== null) {
-			var tmp = headers.ADDRESS + ':' + headers.PORT + '/' + headers.SERVICENAME;			
-
-			if(!searches[key].result[headers.SERVICENAME]) {
-				searches[key].result[headers.SERVICENAME] = [];
-			}
-			searches[key].result[headers.SERVICENAME].push(Array.prototype.slice.call(arguments));
-
-			clearTimeout(searches[key].tmrResolve);
-			searches[key].tmrResolve = setTimeout(()=>{
-				//console.log('Hidden timer triggered!', searches[key].result[headers.SERVICENAME]);
-				searches[key].result[headers.SERVICENAME].forEach((args) => {
-					searches[key].callback.apply(this, args);
-				});
-			}, 400);
+	//console.log('Got a response to an m-search:', code, headers, rinfo);
+	//console.log('Got a response to an m-search:', headers.ST);
+	searches.forEach((search) => {
+		if(search.matcher.test(headers.ST)) {
+			search.result.push({headers: headers, code: code, rinfo: rinfo});
+			clearTimeout(search.tmrResolve);
+			search.tmrResolve = setTimeout(()=>{
+				search.callback(null, search.result);
+				//console.log(require('util').inspect(search.result, {depth: 10, colors: true}));
+				/*search.result.forEach((args) => {
+					search.callback.apply(this, args);
+				});*/
+				searches.splice(searches.indexOf(search), 1);
+			}, 500);
 		}
 	});
 });
 
-ssdpClient.findServices('urn:schemas-upnp-org:device:*', function(headers, code, rinfo) {
+ssdpClient.findServices('urn:schemas-upnp-org:device:*', function(err, res) {
 	//console.log('Got a response to an m-search: ', headers, code, rinfo);
-	console.log('Got a response to an m-search: ', headers.SERVICENAME + "\t" + headers.ADDRESS + ':' + headers.PORT + "\thttp://" + headers.LOCATION);
+	//console.log(headers.USN, headers.SERVICENAME + "\t" + headers.ADDRESS + ':' + headers.PORT + "\thttp://" + headers.LOCATION);
+	if(err) {
+		throw(err);
+	}
+	res.sort(function(a,b) {
+		return a.headers.SERVICENAME == b.headers.SERVICENAME ? 0 : a.headers.SERVICENAME > b.headers.SERVICENAME ? 1 : -1;
+	}).forEach(function(r) {
+		var options = {
+			host: r.headers.ADDRESS,
+			port: r.headers.PORT,
+			path: '/stats'
+		};
 
-	var options = {
-		host: headers.ADDRESS,
-		port: headers.PORT,
-		path: '/stats'
-	};
+		http.request(options, function(response) {
+			var str = '';	
 
-	/*http.request(options, function(response) {
-		var str = '';
+			//another chunk of data has been recieved, so append it to `str`
+			response.on('data', function (chunk) {
+				str += chunk;
+			});
 
-		//another chunk of data has been recieved, so append it to `str`
-		response.on('data', function (chunk) {
-			str += chunk;
-		});
-
-		//the whole response has been recieved, so we just print it out here
-		response.on('end', function () {
-			console.log((headers.ADDRESS + ':' + headers.PORT + '/' + headers.SERVICENAME + (new Array(51)).join(' ')).substr(0, 50), str);
-		});
-	}).end();*/
-
+			//the whole response has been recieved, so we just print it out here
+			response.on('end', function () {
+				//console.log((r.headers.ADDRESS + ':' + r.headers.PORT + '/' + r.headers.SERVICENAME + (new Array(51)).join(' ')).substr(0, 50), str);
+				console.log(r.headers.ADDRESS + '\t' + r.headers.PORT + '\t' + (r.headers.SERVICENAME + (new Array(51)).join(' ')).substr(0, 50), str);
+			});
+		}).end();
+	});
 });

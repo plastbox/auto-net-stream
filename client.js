@@ -4,7 +4,7 @@
 const ssdp = require('node-ssdp').Client;
 //var net = require('net');
 const http = require('http');
-
+const querystring = require('querystring');
 var ssdpClient = new ssdp({
 	explicitSocketBind: true
 });
@@ -14,31 +14,36 @@ var ssdpClient = new ssdp({
 	console.log('stop ssdpcli');
 });*/
 
-var searchCallbacks = {};
-ssdpClient.searchCallback = function(name, callback) {
-	if(!searchCallbacks[name]) {
-		searchCallbacks[name] = [];
-		Object.defineProperty(searchCallbacks[name], 'discoveredKeys', { value: [], enumerable: false });
-		Object.defineProperty(searchCallbacks[name], 'timer', { value: setTimeout(function() { console.log('Hidden timer triggered!'); }, 40), enumerable: false, writable: true });
-		console.log('callbacks', searchCallbacks[name], searchCallbacks[name].discoveredKeys);
+var searches = [];
+ssdpClient.findServices = function(searchString, callback) {
+	var search = {
+		searchString: searchString,
+		matcher: new RegExp('\^' + searchString.replace(/\*/g, '\[\\w\\d\\-\]\*') + '\$','i'),
+		callback: callback,
+		result: []/*{}*/,
+		tmrResolve: setTimeout(()=>{
+			console.log('Resolve search (empty)');
+			searches.splice(searches.indexOf(search), 1)
+		}, 500)
 	}
-	searchCallbacks[name].push(callback);
-	this.search(name);
-	setTimeout(()=>{}, 1000);
+	searches.push(search);
+	this.search(searchString);
 };
 ssdpClient.on('response', function inResponse(headers, code, rinfo) {
-	//console.log('Got a response to an m-search:\n', code, headers, rinfo);
-	Object.keys(searchCallbacks).forEach((key) => {
-		if(headers.USN.match(new RegExp(key.replace(/\*/g, '.*'), "g")) !== null) {
-			var tmp = headers.ADDRESS + ':' + headers.PORT + '/' + headers.SERVICENAME;			
-			if(searchCallbacks[key].discoveredKeys.indexOf(tmp) === -1) {
-				clearTimeout(searchCallbacks[key].timer);
-				searchCallbacks[key].timer = setTimeout(function() { console.log('Hidden timer triggered!'); }, 40);
-				searchCallbacks[key].discoveredKeys.push(tmp);
-				searchCallbacks[key].forEach((cb) => {
-					cb.call(this, headers, code, rinfo);
-				});
-			}
+	//console.log('Got a response to an m-search:', code, headers, rinfo);
+	console.log('Got a response to an m-search:', headers.ST);
+	searches.forEach((search) => {
+		if(search.matcher.test(headers.ST)) {
+			search.result.push({headers: headers, code: code, rinfo: rinfo});
+			clearTimeout(search.tmrResolve);
+			search.tmrResolve = setTimeout(()=>{
+				search.callback(null, search.result);
+				//console.log(require('util').inspect(search.result, {depth: 10, colors: true}));
+				/*search.result.forEach((args) => {
+					search.callback.apply(this, args);
+				});*/
+				searches.splice(searches.indexOf(search), 1);
+			}, 500);
 		}
 	});
 });
@@ -52,14 +57,18 @@ module.exports = function(opt, callback) {
 	}
 
 	var created = false;
-	ssdpClient.searchCallback('urn:schemas-upnp-org:device:' + opt.servicename, function(headers, code, rinfo) {
+	ssdpClient.findServices('urn:schemas-upnp-org:device:' + opt.servicename, function(err, res) {
+		if(err) {
+			throw(err);
+		}
+		var r = res[Math.floor(Math.random() * res.length)];
 		if(!created) {
 			created = true;
 
 			var options = {
-				host: headers.ADDRESS,
-				port: headers.PORT,
-				path: '/'
+				host: r.headers.ADDRESS,
+				port: r.headers.PORT,
+				path: '/?' + querystring.stringify(opt)
 			};
 			
 			http.request(options, function(res) {
