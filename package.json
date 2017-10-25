@@ -1,0 +1,25 @@
+{
+  "name": "auto-net-stream",
+  "version": "0.0.1",
+  "description": "Allows auto-discovery setup of stream topologies.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/plastbox/auto-net-stream.git"
+  },
+  "keywords": [
+    "stream",
+    "autoconfig",
+    "ssdp"
+  ],
+  "author": "Kim Helberg",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/plastbox/auto-net-stream/issues"
+  },
+  "homepage": "https://github.com/plastbox/auto-net-stream#readme"
+}
