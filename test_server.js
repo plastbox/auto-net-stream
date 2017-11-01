@@ -1,14 +1,10 @@
 /* jshint node:true */
 'use strict';
 
-for(var i = 0; i < 3; i++) {
-
-	require('./server.js')({servicename: 'timesource'}, function(socket, request) {
-		var ts = new MeasurementStream(request);
-		ts.pipe(socket);
-	});
-
-}
+require('.').Server({servicename: 'fake-sensorify'}, function(socket, request) {
+	var ts = new MeasurementStream(request);
+	ts.pipe(socket);
+});
 
 const { Readable } = require('stream');
 class MeasurementStream extends Readable {

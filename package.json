@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/plastbox/auto-net-stream#readme",
   "dependencies": {
+    "minimist": "^1.2.0",
     "node-machine-id": "^1.1.9",
     "node-ssdp": "github:plastbox/node-ssdp"
   },
